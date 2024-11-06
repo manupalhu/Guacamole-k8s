@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mariadb
+  namespace: guacamole
+  labels:
+    app: guacamole
+    tier: backend
+spec:
+  serviceName: "mariadb"
+  selector:
+    matchLabels:
+      app: guacamole
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: guacamole
+        tier: backend
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:10.4.30
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: guacamole
+                  key: user_login
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: guacamole
+                  key: user_password
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: guacamole
+                  key: database
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: guacamole
+                  key: mysql_root_password
+          ports:
+            - name: mariadb
+              containerPort: 3306
+          livenessProbe:
+            tcpSocket:
+              port: 3306
+            initialDelaySeconds: 25
+            periodSeconds: 25
+          resources:
+            requests:
+              memory: "90Mi"
+              cpu: "250m"
+            limits:
+              memory: "150Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: mariadb-persistent-storage
+              mountPath: "/var/lib/mysql"
+      volumes:
+        - name: mariadb-persistent-storage
+          persistentVolumeClaim:
+            claimName: mariadb-storage

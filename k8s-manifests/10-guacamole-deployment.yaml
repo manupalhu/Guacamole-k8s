@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guacamole
+  namespace: guacamole
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: guacamole
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: guacamole
+        tier: frontend
+    spec:
+      initContainers:
+        - name: guacamole-init
+          image: noloknolo/guacd-sql-initializer:0.8
+          imagePullPolicy: Always
+          env:
+            - name: MYSQL_PORT
+              value: "3306"
+            - name: MYSQL_HOSTNAME
+              value: "mariadb"
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: guacamole
+                  key: database
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: guacamole
+                  key: user_login
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: guacamole
+                  key: user_password
+      containers:
+        - name: guacamole
+          image: noloknolo/guacamole:0.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GUACD_HOSTNAME
+              value: "guacd"
+            - name: GUACD_PORT
+              value: "4822"
+            - name: MYSQL_PORT
+              value: "3306"
+            - name: MYSQL_HOSTNAME
+              value: "mariadb"
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: guacamole
+                  key: database
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: guacamole
+                  key: user_login
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: guacamole
+                  key: user_password
+          ports:
+            - name: guacamole
+              containerPort: 8080
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "750m"
